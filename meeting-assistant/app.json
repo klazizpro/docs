@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Meeting Assistant",
+    "slug": "meeting-assistant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "meeting-assistant",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meetingassistant.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Meeting Assistant listens to conversations and transcribes questions so Claude can suggest answers.",
+        "NSMicrophoneUsageDescription": "Meeting Assistant uses the microphone to hear meeting and interview questions."
+      }
+    },
+    "android": {
+      "package": "com.meetingassistant.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#030712",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Meeting Assistant uses the microphone to hear meeting and interview questions.",
+          "speechRecognitionPermission": "Meeting Assistant listens to conversations and transcribes questions so Claude can suggest answers."
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}
