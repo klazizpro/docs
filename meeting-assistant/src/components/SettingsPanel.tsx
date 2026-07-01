@@ -8,7 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AppSettings, AnswerMode } from '../types';
+import { getProviderConfig, LLM_PROVIDERS } from '../constants/providers';
+import { AnswerMode, AppSettings, LlmProvider } from '../types';
 
 type Props = {
   visible: boolean;
@@ -17,21 +18,33 @@ type Props = {
   onSave: (settings: AppSettings) => void;
 };
 
-const MODES: { id: AnswerMode; title: string; description: string }[] = [
+const ANSWER_MODES: { id: AnswerMode; title: string; description: string }[] = [
   {
     id: 'api',
-    title: 'Claude API (in-app answers)',
-    description: 'Fastest option. Uses your Anthropic API key and shows answers inside this app.',
+    title: 'LLM API (in-app answers)',
+    description: 'Send questions to your chosen provider and show answers inside this app.',
   },
   {
-    id: 'claude-shortcut',
-    title: 'Claude iPhone app (Shortcut)',
+    id: 'ios-shortcut',
+    title: 'iOS Shortcut (external app)',
     description:
-      'Sends the question to an iOS Shortcut that uses the "Ask Claude" action from your installed Claude app.',
+      'Hand off questions to an iOS Shortcut — useful for Claude, ChatGPT, or any app with a Shortcut action.',
   },
 ];
 
+function applyProvider(settings: AppSettings, provider: LlmProvider): AppSettings {
+  const config = getProviderConfig(provider);
+  return {
+    ...settings,
+    provider,
+    model: config.defaultModel,
+    baseUrl: config.defaultBaseUrl,
+  };
+}
+
 export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
+  const activeProvider = getProviderConfig(settings.provider);
+
   return (
     <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
       <View style={styles.container}>
@@ -43,8 +56,8 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>Answer source</Text>
-          {MODES.map((mode) => {
+          <Text style={styles.sectionTitle}>Answer delivery</Text>
+          {ANSWER_MODES.map((mode) => {
             const selected = settings.answerMode === mode.id;
             return (
               <Pressable
@@ -60,11 +73,26 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
 
           {settings.answerMode === 'api' && (
             <>
-              <Text style={styles.label}>Anthropic API key</Text>
+              <Text style={styles.sectionTitle}>LLM provider</Text>
+              {LLM_PROVIDERS.map((provider) => {
+                const selected = settings.provider === provider.id;
+                return (
+                  <Pressable
+                    key={provider.id}
+                    onPress={() => onSave(applyProvider(settings, provider.id))}
+                    style={[styles.modeCard, selected && styles.modeCardSelected]}
+                  >
+                    <Text style={styles.modeTitle}>{provider.name}</Text>
+                    <Text style={styles.modeDescription}>{provider.description}</Text>
+                  </Pressable>
+                );
+              })}
+
+              <Text style={styles.label}>API key</Text>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="sk-ant-..."
+                placeholder={activeProvider.apiKeyPlaceholder}
                 placeholderTextColor="#6b7280"
                 secureTextEntry
                 style={styles.input}
@@ -72,33 +100,53 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
                 onChangeText={(apiKey) => onSave({ ...settings, apiKey })}
               />
 
-              <Text style={styles.label}>Claude model</Text>
+              <Text style={styles.label}>Model</Text>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="claude-sonnet-4-20250514"
+                placeholder={activeProvider.defaultModel}
                 placeholderTextColor="#6b7280"
                 style={styles.input}
                 value={settings.model}
                 onChangeText={(model) => onSave({ ...settings, model })}
               />
+              <Text style={styles.help}>Examples: {activeProvider.modelExamples.join(', ')}</Text>
+
+              {(settings.provider === 'openai-compatible' || settings.provider === 'openai') && (
+                <>
+                  <Text style={styles.label}>API base URL</Text>
+                  <TextInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder={activeProvider.defaultBaseUrl}
+                    placeholderTextColor="#6b7280"
+                    style={styles.input}
+                    value={settings.baseUrl}
+                    onChangeText={(baseUrl) => onSave({ ...settings, baseUrl })}
+                  />
+                  <Text style={styles.help}>
+                    For Ollama on your Mac: use your computer&apos;s LAN IP, e.g.
+                    http://192.168.1.10:11434/v1
+                  </Text>
+                </>
+              )}
             </>
           )}
 
-          {settings.answerMode === 'claude-shortcut' && (
+          {settings.answerMode === 'ios-shortcut' && (
             <>
               <Text style={styles.label}>Shortcut name</Text>
               <TextInput
                 autoCapitalize="words"
-                placeholder="Ask Claude Meeting"
+                placeholder="Ask LLM Meeting"
                 placeholderTextColor="#6b7280"
                 style={styles.input}
                 value={settings.shortcutName}
                 onChangeText={(shortcutName) => onSave({ ...settings, shortcutName })}
               />
               <Text style={styles.help}>
-                Create a Shortcut in the Shortcuts app: receive input → Ask Claude → show result.
-                Name it exactly as above.
+                Create a Shortcut that receives text, calls your LLM app (Claude, ChatGPT, etc.),
+                and shows the result. Name it exactly as above.
               </Text>
             </>
           )}
@@ -106,7 +154,7 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
           <Text style={styles.label}>Your background (resume, role, talking points)</Text>
           <TextInput
             multiline
-            placeholder="Paste your resume summary, job description, or key facts Claude should use."
+            placeholder="Paste your resume summary, job description, or key facts the model should use."
             placeholderTextColor="#6b7280"
             style={[styles.input, styles.textArea]}
             value={settings.context}
@@ -117,7 +165,7 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
             <View style={styles.switchCopy}>
               <Text style={styles.switchTitle}>Auto-answer detected questions</Text>
               <Text style={styles.switchDescription}>
-                When enabled, new questions trigger Claude automatically.
+                When enabled, new questions trigger your LLM automatically.
               </Text>
             </View>
             <Switch
@@ -165,6 +213,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 12,
+    marginTop: 8,
   },
   modeCard: {
     backgroundColor: '#111827',

@@ -1,4 +1,6 @@
-export type AnswerMode = 'api' | 'claude-shortcut';
+export type LlmProvider = 'anthropic' | 'openai' | 'gemini' | 'openai-compatible';
+
+export type AnswerMode = 'api' | 'ios-shortcut';
 
 export type SessionItem = {
   id: string;
@@ -10,19 +12,23 @@ export type SessionItem = {
 };
 
 export type AppSettings = {
-  apiKey: string;
   answerMode: AnswerMode;
+  provider: LlmProvider;
+  apiKey: string;
+  model: string;
+  baseUrl: string;
   shortcutName: string;
   context: string;
-  model: string;
   autoAnswer: boolean;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  apiKey: '',
   answerMode: 'api',
-  shortcutName: 'Ask Claude Meeting',
-  context: '',
+  provider: 'anthropic',
+  apiKey: '',
   model: 'claude-sonnet-4-20250514',
+  baseUrl: 'https://api.anthropic.com',
+  shortcutName: 'Ask LLM Meeting',
+  context: '',
   autoAnswer: true,
 };

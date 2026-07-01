@@ -1,44 +1,60 @@
 # Meeting Assistant
 
-A mobile app that listens to meetings and interviews, detects questions from speech, and generates concise text answers you can read aloud — powered by Claude.
+A mobile app for **meetings and interviews on a separate device** (laptop, tablet, another phone). Your phone listens through its microphone, detects questions from the audio, and shows LLM-generated answers you can read aloud.
 
 Built with **Expo (React Native)** for iPhone and Android.
 
-## What it does
+## How it works
 
-1. **Listens** to the room via your phone microphone
-2. **Transcribes** speech in real time
-3. **Detects questions** (e.g. sentences ending with `?`, or starting with "what", "how", "tell me", etc.)
-4. **Sends questions to Claude** and shows suggested answers on screen
+```
+[Laptop / tablet runs Zoom, Teams, interview call]
+              ↓ speaker audio
+[Your phone — Meeting Assistant listens via mic]
+              ↓ speech-to-text
+[Question detected] → [Your chosen LLM] → [Answer on screen]
+```
 
-## Claude integration (two options)
+**This phone does not join the meeting.** It only picks up sound from the other device's speakers.
 
-### Option A — Claude API (recommended, answers in-app)
+## Setup for separate-device listening
 
-Uses the [Anthropic API](https://docs.anthropic.com/en/api/getting-started) with the same Claude models. You need an API key from [console.anthropic.com](https://console.anthropic.com/).
+1. Run the meeting or interview on a **laptop or tablet** (Zoom, Teams, Google Meet, phone call on speaker, etc.)
+2. Place this phone **6–12 inches** from that device's speaker
+3. Use **speakers on the meeting device**, not earbuds — otherwise this phone cannot hear the interviewer
+4. Tap **Start listening** and keep this app in the foreground
+5. Read the suggested answers on screen
 
-> **Note:** The Claude iPhone app subscription and the API are separate products. The API gives the fastest in-app experience.
+## LLM providers (swap anytime)
 
-1. Open **Settings** in the app
-2. Choose **Claude API (in-app answers)**
-3. Paste your API key
-4. Add your resume / background context for better interview answers
+The app is **LLM-agnostic**. In **Settings → LLM provider**, choose:
 
-### Option B — Claude iPhone app via Shortcuts (iOS 18+)
+| Provider | Use case |
+|----------|----------|
+| **Anthropic (Claude)** | Claude models via API key |
+| **OpenAI** | GPT-4o, GPT-4o-mini, etc. |
+| **Google Gemini** | Gemini Flash / Pro |
+| **OpenAI-compatible** | Ollama, Groq, Together, LM Studio, any `/v1/chat/completions` endpoint |
 
-If you already have the **Claude** app installed, you can route questions through an iOS Shortcut using Apple's **Ask Claude** action ([Anthropic guide](https://support.anthropic.com/en/articles/10263469-using-claude-app-intents-and-shortcuts-on-ios)).
+You can change provider, model, and API base URL at any time without reinstalling.
 
-1. Open the **Shortcuts** app on your iPhone
-2. Create a new Shortcut named `Ask Claude Meeting`
-3. Add actions:
-   - **Receive input** (or use Shortcut Input)
-   - **Ask Claude** (pass the input)
-   - **Show result** or **Copy to clipboard**
-4. In Meeting Assistant **Settings**, choose **Claude iPhone app (Shortcut)** and set the shortcut name to match
+### Using Claude on your iPhone (without API)
 
-When a question is detected, the app copies the question and runs your Shortcut.
+If you have the **Claude app** installed but prefer not to use the API:
 
-## Quick start (development)
+1. Settings → **iOS Shortcut (external app)**
+2. Create a Shortcut with: Receive input → **Ask Claude** → Show result
+3. Name it `Ask LLM Meeting` (or match the name in Settings)
+
+Same pattern works for ChatGPT or any app with a Shortcuts action.
+
+### Local models (Ollama)
+
+1. Run Ollama on your Mac: `ollama serve`
+2. Settings → **OpenAI-compatible**
+3. Base URL: `http://YOUR_MAC_IP:11434/v1` (same Wi‑Fi as your phone)
+4. Model: e.g. `llama3.2`
+
+## Quick start
 
 ```bash
 cd meeting-assistant
@@ -46,43 +62,38 @@ npm install
 npx expo start
 ```
 
-Then scan the QR code with **Expo Go** on your phone, or run a development build:
+Scan the QR code with **Expo Go**, or build natively:
 
 ```bash
-npx expo run:ios    # requires macOS + Xcode
+npx expo run:ios    # macOS + Xcode required
 npx expo run:android
 ```
 
-For microphone access on a real device, use a **development build** or production build — Expo Go has limitations for some native features.
-
-## iOS limitations to know
-
-- **In-person meetings:** Works well — the mic picks up nearby speakers.
-- **Phone / video calls:** iOS does **not** let third-party apps access call audio directly. The mic may only hear your voice and faint speaker audio depending on setup.
-- **Background listening:** iOS may pause speech recognition when the app is backgrounded.
-- **Privacy & consent:** Recording or transcribing others without consent may be illegal in your region. Use responsibly and follow workplace rules.
+For reliable microphone access, use a **development build** or production build rather than Expo Go.
 
 ## Project structure
 
 ```
 meeting-assistant/
-├── App.tsx                          # Main UI
+├── App.tsx
 ├── src/
-│   ├── hooks/useMeetingAssistant.ts # Listen → detect → answer flow
+│   ├── constants/
+│   │   ├── providers.ts      # LLM provider presets
+│   │   └── speech.ts         # Ambient listening audio config
 │   ├── services/
-│   │   ├── claude.ts                # Anthropic API
-│   │   ├── claudeShortcut.ts        # iOS Shortcut handoff
-│   │   ├── questionDetector.ts      # Question heuristics
-│   │   └── settings.ts              # Secure API key storage
-│   └── components/                  # UI components
+│   │   ├── llm/              # Provider-specific API clients
+│   │   ├── questionDetector.ts
+│   │   └── settings.ts
+│   └── components/
+│       └── ListeningTips.tsx # Separate-device setup guide
 ```
 
-## Tips for interviews
+## Limitations
 
-1. Paste a short **resume summary** and the **job description** into Settings → background context.
-2. Keep **auto-answer** on so questions are answered as they are detected.
-3. Read answers naturally — shorten them in your own words if needed.
-4. Test in a mock interview before using it live.
+- **Audio quality** depends on speaker volume, room noise, and phone placement
+- **iOS backgrounding** may pause speech recognition — keep the app open
+- **Privacy** — get consent before recording others; follow workplace and local laws
+- **API vs app** — Claude/ChatGPT app subscriptions are separate from API keys
 
 ## License
 

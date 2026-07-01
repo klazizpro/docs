@@ -16,7 +16,7 @@ export function AnswerCard({ item, onRetry }: Props) {
       {item.status === 'loading' && (
         <View style={styles.loadingRow}>
           <ActivityIndicator color="#60a5fa" />
-          <Text style={styles.loadingText}>Claude is thinking…</Text>
+          <Text style={styles.loadingText}>Generating answer…</Text>
         </View>
       )}
 

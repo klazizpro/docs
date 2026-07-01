@@ -13,7 +13,7 @@ export function TranscriptView({ transcript, interimTranscript }: Props) {
       <Text style={styles.heading}>Live transcript</Text>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.text}>
-          {display || 'Questions from the room will appear here as you listen.'}
+          {display || 'Speech from the nearby device will appear here as you listen.'}
         </Text>
       </ScrollView>
     </View>

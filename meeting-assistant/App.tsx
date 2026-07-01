@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import { AnswerCard } from './src/components/AnswerCard';
 import { ListenButton } from './src/components/ListenButton';
+import { ListeningTips } from './src/components/ListeningTips';
 import { SettingsPanel } from './src/components/SettingsPanel';
 import { TranscriptView } from './src/components/TranscriptView';
 import { useMeetingAssistant } from './src/hooks/useMeetingAssistant';
@@ -49,14 +50,18 @@ export default function App() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerCopy}>
           <Text style={styles.title}>Meeting Assistant</Text>
-          <Text style={styles.subtitle}>Listen, detect questions, get Claude answers</Text>
+          <Text style={styles.subtitle}>
+            Hear a nearby laptop or tablet, detect questions, get LLM answers
+          </Text>
         </View>
         <Pressable onPress={() => setSettingsOpen(true)} style={styles.settingsButton}>
           <Text style={styles.settingsText}>Settings</Text>
         </Pressable>
       </View>
+
+      <ListeningTips />
 
       <ListenButton listening={listening} onStart={startListening} onStop={stopListening} />
 
@@ -97,13 +102,11 @@ export default function App() {
       <ScrollView style={styles.answersList} contentContainerStyle={styles.answersContent}>
         {sessions.length === 0 ? (
           <Text style={styles.emptyAnswers}>
-            Detected questions and Claude answers will show up here. Add your resume in Settings for
-            better interview answers.
+            Questions picked up from the other device and LLM answers will show up here. Choose your
+            provider in Settings and add your resume for better interview answers.
           </Text>
         ) : (
-          sessions.map((item) => (
-            <AnswerCard key={item.id} item={item} onRetry={askManually} />
-          ))
+          sessions.map((item) => <AnswerCard key={item.id} item={item} onRetry={askManually} />)
         )}
       </ScrollView>
 
@@ -134,7 +137,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  headerCopy: {
+    flex: 1,
+    paddingRight: 12,
   },
   title: {
     color: '#f9fafb',
@@ -144,6 +151,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#9ca3af',
     fontSize: 14,
+    lineHeight: 20,
     marginTop: 4,
   },
   settingsButton: {

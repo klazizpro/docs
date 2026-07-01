@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 
 const SHORTCUT_PROMPT = `Meeting question to answer:\n`;
 
-export async function sendQuestionToClaudeShortcut(params: {
+export async function sendQuestionToIosShortcut(params: {
   question: string;
   shortcutName: string;
 }): Promise<void> {
@@ -23,6 +23,6 @@ export async function sendQuestionToClaudeShortcut(params: {
   }
 
   throw new Error(
-    `Could not open Shortcut "${shortcutName}". Create it in the Shortcuts app using the "Ask Claude" action, then set the same name in Settings.`,
+    `Could not open Shortcut "${shortcutName}". Create it in the Shortcuts app and set the same name in Settings.`,
   );
 }

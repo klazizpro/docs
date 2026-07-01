@@ -3,8 +3,9 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
-import { askClaude } from '../services/claude';
-import { sendQuestionToClaudeShortcut } from '../services/claudeShortcut';
+import { AMBIENT_LISTENING_OPTIONS } from '../constants/speech';
+import { askLlm } from '../services/llm';
+import { sendQuestionToIosShortcut } from '../services/iosShortcut';
 import { extractNewQuestions } from '../services/questionDetector';
 import { loadSettings, saveSettings } from '../services/settings';
 import { AppSettings, DEFAULT_SETTINGS, SessionItem } from '../types';
@@ -58,24 +59,22 @@ export function useMeetingAssistant() {
       const currentSettings = settingsRef.current;
 
       try {
-        if (currentSettings.answerMode === 'claude-shortcut') {
-          await sendQuestionToClaudeShortcut({
+        if (currentSettings.answerMode === 'ios-shortcut') {
+          await sendQuestionToIosShortcut({
             question,
             shortcutName: currentSettings.shortcutName,
           });
           updateSession(item.id, {
             status: 'done',
             answer:
-              'Question copied and sent to your Claude Shortcut. Open Claude to read the answer, or check your Shortcut output.',
+              'Question sent to your iOS Shortcut. Check the Shortcut output or your LLM app for the answer.',
           });
           return;
         }
 
-        const answer = await askClaude({
-          apiKey: currentSettings.apiKey,
+        const answer = await askLlm({
+          settings: currentSettings,
           question,
-          context: currentSettings.context,
-          model: currentSettings.model,
         });
 
         updateSession(item.id, { status: 'done', answer });
@@ -122,12 +121,7 @@ export function useMeetingAssistant() {
 
     if (restartingRef.current) {
       restartingRef.current = false;
-      ExpoSpeechRecognitionModule.start({
-        lang: 'en-US',
-        interimResults: true,
-        continuous: true,
-        iosTaskHint: 'dictation',
-      });
+      ExpoSpeechRecognitionModule.start(AMBIENT_LISTENING_OPTIONS);
     }
   });
 
@@ -166,12 +160,7 @@ export function useMeetingAssistant() {
     setInterimTranscript('');
     setSessions([]);
 
-    ExpoSpeechRecognitionModule.start({
-      lang: 'en-US',
-      interimResults: true,
-      continuous: true,
-      iosTaskHint: 'dictation',
-    });
+    ExpoSpeechRecognitionModule.start(AMBIENT_LISTENING_OPTIONS);
   }, []);
 
   const stopListening = useCallback(() => {
