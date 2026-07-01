@@ -7,6 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "meeting-assistant",
+    "experiments": {
+      "baseUrl": "/docs"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.meetingassistant.app",
@@ -27,7 +30,14 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Meeting Assistant",
+      "shortName": "Meeting",
+      "description": "Listen to nearby meetings, detect questions, get LLM answers.",
+      "themeColor": "#030712",
+      "backgroundColor": "#030712",
+      "display": "standalone",
+      "bundler": "metro"
     },
     "plugins": [
       [

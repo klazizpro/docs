@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -13,6 +14,7 @@ import { useState } from 'react';
 import { AnswerCard } from './src/components/AnswerCard';
 import { ListenButton } from './src/components/ListenButton';
 import { ListeningTips } from './src/components/ListeningTips';
+import { SafariTips } from './src/components/SafariTips';
 import { SettingsPanel } from './src/components/SettingsPanel';
 import { TranscriptView } from './src/components/TranscriptView';
 import { useMeetingAssistant } from './src/hooks/useMeetingAssistant';
@@ -62,6 +64,7 @@ export default function App() {
       </View>
 
       <ListeningTips />
+      {Platform.OS === 'web' && <SafariTips />}
 
       <ListenButton listening={listening} onStart={startListening} onStop={stopListening} />
 

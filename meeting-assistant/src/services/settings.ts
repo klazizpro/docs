@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getProviderConfig } from '../constants/providers';
 import { AppSettings, DEFAULT_SETTINGS, LlmProvider } from '../types';
@@ -49,8 +50,33 @@ function migrateSettings(parsed: LegacySettings, apiKey: string): AppSettings {
   };
 }
 
+async function loadApiKey(): Promise<string> {
+  if (Platform.OS === 'web') {
+    return (await AsyncStorage.getItem(API_KEY_KEY)) ?? '';
+  }
+
+  return (await SecureStore.getItemAsync(API_KEY_KEY)) ?? '';
+}
+
+async function saveApiKey(apiKey: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    if (apiKey.trim()) {
+      await AsyncStorage.setItem(API_KEY_KEY, apiKey.trim());
+    } else {
+      await AsyncStorage.removeItem(API_KEY_KEY);
+    }
+    return;
+  }
+
+  if (apiKey.trim()) {
+    await SecureStore.setItemAsync(API_KEY_KEY, apiKey.trim());
+  } else {
+    await SecureStore.deleteItemAsync(API_KEY_KEY);
+  }
+}
+
 export async function loadSettings(): Promise<AppSettings> {
-  const apiKey = (await SecureStore.getItemAsync(API_KEY_KEY)) ?? '';
+  const apiKey = await loadApiKey();
   const raw =
     (await AsyncStorage.getItem(SETTINGS_KEY)) ??
     (await AsyncStorage.getItem(LEGACY_SETTINGS_KEY));
@@ -70,10 +96,5 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   const { apiKey, ...rest } = settings;
 
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
-
-  if (apiKey.trim()) {
-    await SecureStore.setItemAsync(API_KEY_KEY, apiKey.trim());
-  } else {
-    await SecureStore.deleteItemAsync(API_KEY_KEY);
-  }
+  await saveApiKey(apiKey);
 }

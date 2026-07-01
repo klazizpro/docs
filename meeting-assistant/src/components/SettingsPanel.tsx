@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
   Modal,
   Pressable,
@@ -24,12 +25,16 @@ const ANSWER_MODES: { id: AnswerMode; title: string; description: string }[] = [
     title: 'LLM API (in-app answers)',
     description: 'Send questions to your chosen provider and show answers inside this app.',
   },
-  {
-    id: 'ios-shortcut',
-    title: 'iOS Shortcut (external app)',
-    description:
-      'Hand off questions to an iOS Shortcut — useful for Claude, ChatGPT, or any app with a Shortcut action.',
-  },
+  ...(Platform.OS !== 'web'
+    ? [
+        {
+          id: 'ios-shortcut' as const,
+          title: 'iOS Shortcut (external app)',
+          description:
+            'Hand off questions to an iOS Shortcut — useful for Claude, ChatGPT, or any app with a Shortcut action.',
+        },
+      ]
+    : []),
 ];
 
 function applyProvider(settings: AppSettings, provider: LlmProvider): AppSettings {

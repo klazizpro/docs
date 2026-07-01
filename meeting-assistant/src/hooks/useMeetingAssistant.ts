@@ -3,7 +3,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
-import { AMBIENT_LISTENING_OPTIONS } from '../constants/speech';
+import { getListeningOptions } from '../constants/speech';
 import { askLlm } from '../services/llm';
 import { sendQuestionToIosShortcut } from '../services/iosShortcut';
 import { extractNewQuestions } from '../services/questionDetector';
@@ -121,7 +121,9 @@ export function useMeetingAssistant() {
 
     if (restartingRef.current) {
       restartingRef.current = false;
-      ExpoSpeechRecognitionModule.start(AMBIENT_LISTENING_OPTIONS);
+      void getListeningOptions().then((options) => {
+        ExpoSpeechRecognitionModule.start(options);
+      });
     }
   });
 
@@ -160,7 +162,8 @@ export function useMeetingAssistant() {
     setInterimTranscript('');
     setSessions([]);
 
-    ExpoSpeechRecognitionModule.start(AMBIENT_LISTENING_OPTIONS);
+    const options = await getListeningOptions();
+    ExpoSpeechRecognitionModule.start(options);
   }, []);
 
   const stopListening = useCallback(() => {
