@@ -1,7 +1,7 @@
 const QUESTION_STARTERS =
   /^(what|how|why|when|where|who|which|whose|whom|can you|could you|would you|will you|do you|did you|have you|are you|is there|tell me|describe|explain|walk me through|give me an example)/i;
 
-const MIN_QUESTION_LENGTH = 12;
+const MIN_QUESTION_LENGTH = 8;
 
 function normalize(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
@@ -58,5 +58,23 @@ export function extractLatestQuestion(transcript: string): string | null {
       return sentences[i];
     }
   }
+  return null;
+}
+
+export function extractTrailingQuestion(text: string): string | null {
+  const trimmed = normalize(text);
+  if (!trimmed) {
+    return null;
+  }
+
+  const latest = extractLatestQuestion(trimmed);
+  if (latest) {
+    return latest;
+  }
+
+  if (trimmed.endsWith('?') && trimmed.length >= MIN_QUESTION_LENGTH) {
+    return trimmed;
+  }
+
   return null;
 }

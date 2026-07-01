@@ -6,13 +6,18 @@ import {
 import { getListeningOptions } from '../constants/speech';
 import { askLlm } from '../services/llm';
 import { sendQuestionToIosShortcut } from '../services/iosShortcut';
-import { extractNewQuestions } from '../services/questionDetector';
+import {
+  extractNewQuestions,
+  extractTrailingQuestion,
+} from '../services/questionDetector';
 import { loadSettings, saveSettings } from '../services/settings';
 import { AppSettings, DEFAULT_SETTINGS, SessionItem } from '../types';
 
 function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+const INTERIM_QUESTION_DELAY_MS = 1200;
 
 export function useMeetingAssistant() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -26,8 +31,10 @@ export function useMeetingAssistant() {
 
   const seenQuestions = useRef(new Set<string>());
   const transcriptRef = useRef('');
+  const interimRef = useRef('');
   const settingsRef = useRef(settings);
   const restartingRef = useRef(false);
+  const interimQuestionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -38,6 +45,14 @@ export function useMeetingAssistant() {
       setSettings(loaded);
       setReady(true);
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (interimQuestionTimer.current) {
+        clearTimeout(interimQuestionTimer.current);
+      }
+    };
   }, []);
 
   const updateSession = useCallback((id: string, patch: Partial<SessionItem>) => {
@@ -86,6 +101,62 @@ export function useMeetingAssistant() {
     [updateSession],
   );
 
+  const queueDetectedQuestion = useCallback(
+    (question: string) => {
+      const normalized = question.trim();
+      if (!normalized) {
+        return;
+      }
+
+      const key = normalized.toLowerCase();
+      if (seenQuestions.current.has(key)) {
+        return;
+      }
+
+      seenQuestions.current.add(key);
+      void answerQuestion(normalized);
+    },
+    [answerQuestion],
+  );
+
+  const scheduleInterimQuestionCheck = useCallback(
+    (text: string) => {
+      if (!settingsRef.current.autoAnswer) {
+        return;
+      }
+
+      if (interimQuestionTimer.current) {
+        clearTimeout(interimQuestionTimer.current);
+      }
+
+      interimQuestionTimer.current = setTimeout(() => {
+        const question = extractTrailingQuestion(text);
+        if (question) {
+          queueDetectedQuestion(question);
+        }
+      }, INTERIM_QUESTION_DELAY_MS);
+    },
+    [queueDetectedQuestion],
+  );
+
+  const processFinalTranscript = useCallback(
+    (text: string) => {
+      const merged = `${transcriptRef.current} ${text}`.trim();
+      transcriptRef.current = merged;
+      setTranscript(merged);
+      setInterimTranscript('');
+      interimRef.current = '';
+
+      if (settingsRef.current.autoAnswer) {
+        const newQuestions = extractNewQuestions(merged, seenQuestions.current);
+        newQuestions.forEach((question) => {
+          void answerQuestion(question);
+        });
+      }
+    },
+    [queueDetectedQuestion],
+  );
+
   const handleTranscriptUpdate = useCallback(
     (text: string, isFinal: boolean) => {
       if (!text.trim()) {
@@ -93,22 +164,17 @@ export function useMeetingAssistant() {
       }
 
       if (isFinal) {
-        const merged = `${transcriptRef.current} ${text}`.trim();
-        transcriptRef.current = merged;
-        setTranscript(merged);
-        setInterimTranscript('');
-
-        const newQuestions = extractNewQuestions(merged, seenQuestions.current);
-        if (settingsRef.current.autoAnswer) {
-          newQuestions.forEach((question) => {
-            void answerQuestion(question);
-          });
+        if (interimQuestionTimer.current) {
+          clearTimeout(interimQuestionTimer.current);
         }
+        processFinalTranscript(text);
       } else {
+        interimRef.current = text;
         setInterimTranscript(text);
+        scheduleInterimQuestionCheck(text);
       }
     },
-    [answerQuestion],
+    [processFinalTranscript, scheduleInterimQuestionCheck],
   );
 
   useSpeechRecognitionEvent('start', () => {
@@ -118,6 +184,10 @@ export function useMeetingAssistant() {
 
   useSpeechRecognitionEvent('end', () => {
     setListening(false);
+
+    if (interimRef.current.trim()) {
+      processFinalTranscript(interimRef.current);
+    }
 
     if (restartingRef.current) {
       restartingRef.current = false;
@@ -157,6 +227,7 @@ export function useMeetingAssistant() {
     }
 
     transcriptRef.current = '';
+    interimRef.current = '';
     seenQuestions.current.clear();
     setTranscript('');
     setInterimTranscript('');
@@ -168,9 +239,14 @@ export function useMeetingAssistant() {
 
   const stopListening = useCallback(() => {
     restartingRef.current = false;
+
+    if (interimRef.current.trim()) {
+      processFinalTranscript(interimRef.current);
+    }
+
     ExpoSpeechRecognitionModule.stop();
     setListening(false);
-  }, []);
+  }, [processFinalTranscript]);
 
   const askManually = useCallback(
     (question: string) => {
@@ -193,6 +269,7 @@ export function useMeetingAssistant() {
 
   const clearTranscript = useCallback(() => {
     transcriptRef.current = '';
+    interimRef.current = '';
     seenQuestions.current.clear();
     setTranscript('');
     setInterimTranscript('');

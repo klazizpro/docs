@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SessionItem } from '../types';
 
 type Props = {
@@ -15,19 +15,21 @@ export function AnswerCard({ item, onRetry }: Props) {
       <Text style={styles.answerLabel}>Suggested answer</Text>
       {item.status === 'loading' && (
         <View style={styles.loadingRow}>
-          <ActivityIndicator color="#60a5fa" />
+          <ActivityIndicator color="#2563eb" />
           <Text style={styles.loadingText}>Generating answer…</Text>
         </View>
       )}
 
       {item.status === 'done' && item.answer && (
-        <Text style={styles.answer} selectable>
-          {item.answer}
-        </Text>
+        <View style={styles.answerBox}>
+          <Text style={styles.answer} selectable>
+            {item.answer}
+          </Text>
+        </View>
       )}
 
       {item.status === 'error' && (
-        <View>
+        <View style={styles.errorBox}>
           <Text style={styles.error}>{item.error}</Text>
           {onRetry && (
             <Pressable onPress={() => onRetry(item.question)} style={styles.retry}>
@@ -42,12 +44,17 @@ export function AnswerCard({ item, onRetry }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#0b1220',
-    borderColor: '#1d4ed8',
+    backgroundColor: '#1e293b',
+    borderColor: '#3b82f6',
     borderRadius: 18,
     borderWidth: 1,
     marginBottom: 14,
     padding: 16,
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+        }
+      : {}),
   },
   questionLabel: {
     color: '#93c5fd',
@@ -64,14 +71,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   answerLabel: {
-    color: '#86efac',
+    color: '#4ade80',
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 8,
     textTransform: 'uppercase',
   },
+  answerBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+  },
   answer: {
-    color: '#f9fafb',
+    color: '#0f172a',
     fontSize: 20,
     fontWeight: '500',
     lineHeight: 30,
@@ -80,26 +92,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
   },
   loadingText: {
-    color: '#cbd5e1',
+    color: '#334155',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 14,
   },
   error: {
-    color: '#fca5a5',
+    color: '#b91c1c',
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 10,
   },
   retry: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1f2937',
+    backgroundColor: '#1d4ed8',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   retryText: {
-    color: '#e5e7eb',
+    color: '#ffffff',
     fontWeight: '600',
   },
 });

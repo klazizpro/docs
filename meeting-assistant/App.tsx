@@ -18,8 +18,10 @@ import { SafariTips } from './src/components/SafariTips';
 import { SettingsPanel } from './src/components/SettingsPanel';
 import { TranscriptView } from './src/components/TranscriptView';
 import { useMeetingAssistant } from './src/hooks/useMeetingAssistant';
+import { useWebTheme } from './src/hooks/useWebTheme';
 
 export default function App() {
+  useWebTheme();
   const {
     ready,
     settings,
@@ -218,10 +220,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   answersList: {
+    backgroundColor: '#111827',
+    borderRadius: 16,
     flex: 1,
+    paddingHorizontal: 4,
   },
   answersContent: {
     paddingBottom: 24,
+    paddingTop: 8,
   },
   emptyAnswers: {
     color: '#6b7280',
