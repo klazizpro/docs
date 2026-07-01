@@ -9,6 +9,7 @@ import { sendQuestionToIosShortcut } from '../services/iosShortcut';
 import {
   extractNewQuestions,
   extractTrailingQuestion,
+  pickQuestionFromText,
 } from '../services/questionDetector';
 import { loadSettings, saveSettings } from '../services/settings';
 import { AppSettings, DEFAULT_SETTINGS, SessionItem } from '../types';
@@ -17,7 +18,7 @@ function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const INTERIM_QUESTION_DELAY_MS = 1200;
+const INTERIM_QUESTION_DELAY_MS = 700;
 
 export function useMeetingAssistant() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -43,6 +44,7 @@ export function useMeetingAssistant() {
   useEffect(() => {
     loadSettings().then((loaded) => {
       setSettings(loaded);
+      settingsRef.current = loaded;
       setReady(true);
     });
   }, []);
@@ -55,28 +57,57 @@ export function useMeetingAssistant() {
     };
   }, []);
 
+  const getFullTranscript = useCallback(() => {
+    return [transcriptRef.current, interimRef.current].filter(Boolean).join(' ').trim();
+  }, []);
+
   const updateSession = useCallback((id: string, patch: Partial<SessionItem>) => {
     setSessions((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }, []);
 
   const answerQuestion = useCallback(
-    async (question: string) => {
+    async (question: string, allowRepeat = false) => {
+      const normalized = question.trim();
+      if (!normalized) {
+        setError('No question text to send.');
+        return;
+      }
+
+      const key = normalized.toLowerCase();
+      if (!allowRepeat && seenQuestions.current.has(key)) {
+        return;
+      }
+      seenQuestions.current.add(key);
+
       const item: SessionItem = {
         id: createId(),
-        question,
+        question: normalized,
         answer: null,
         status: 'loading',
         createdAt: Date.now(),
       };
 
       setSessions((prev) => [item, ...prev]);
+      setError(null);
 
       const currentSettings = settingsRef.current;
+
+      if (
+        currentSettings.answerMode === 'api' &&
+        currentSettings.provider !== 'openai-compatible' &&
+        !currentSettings.apiKey.trim()
+      ) {
+        updateSession(item.id, {
+          status: 'error',
+          error: 'Add your API key in Settings and tap Done.',
+        });
+        return;
+      }
 
       try {
         if (currentSettings.answerMode === 'ios-shortcut') {
           await sendQuestionToIosShortcut({
-            question,
+            question: normalized,
             shortcutName: currentSettings.shortcutName,
           });
           updateSession(item.id, {
@@ -89,34 +120,17 @@ export function useMeetingAssistant() {
 
         const answer = await askLlm({
           settings: currentSettings,
-          question,
+          question: normalized,
         });
 
         updateSession(item.id, { status: 'done', answer });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to get an answer.';
         updateSession(item.id, { status: 'error', error: message });
+        setError(message);
       }
     },
     [updateSession],
-  );
-
-  const queueDetectedQuestion = useCallback(
-    (question: string) => {
-      const normalized = question.trim();
-      if (!normalized) {
-        return;
-      }
-
-      const key = normalized.toLowerCase();
-      if (seenQuestions.current.has(key)) {
-        return;
-      }
-
-      seenQuestions.current.add(key);
-      void answerQuestion(normalized);
-    },
-    [answerQuestion],
   );
 
   const scheduleInterimQuestionCheck = useCallback(
@@ -125,18 +139,20 @@ export function useMeetingAssistant() {
         return;
       }
 
+      interimRef.current = text;
+
       if (interimQuestionTimer.current) {
         clearTimeout(interimQuestionTimer.current);
       }
 
       interimQuestionTimer.current = setTimeout(() => {
-        const question = extractTrailingQuestion(text);
+        const question = extractTrailingQuestion(interimRef.current);
         if (question) {
-          queueDetectedQuestion(question);
+          void answerQuestion(question);
         }
       }, INTERIM_QUESTION_DELAY_MS);
     },
-    [queueDetectedQuestion],
+    [answerQuestion],
   );
 
   const processFinalTranscript = useCallback(
@@ -150,11 +166,11 @@ export function useMeetingAssistant() {
       if (settingsRef.current.autoAnswer) {
         const newQuestions = extractNewQuestions(merged, seenQuestions.current);
         newQuestions.forEach((question) => {
-          void answerQuestion(question);
+          void answerQuestion(question, true);
         });
       }
     },
-    [queueDetectedQuestion],
+    [answerQuestion],
   );
 
   const handleTranscriptUpdate = useCallback(
@@ -240,6 +256,10 @@ export function useMeetingAssistant() {
   const stopListening = useCallback(() => {
     restartingRef.current = false;
 
+    if (interimQuestionTimer.current) {
+      clearTimeout(interimQuestionTimer.current);
+    }
+
     if (interimRef.current.trim()) {
       processFinalTranscript(interimRef.current);
     }
@@ -248,15 +268,21 @@ export function useMeetingAssistant() {
     setListening(false);
   }, [processFinalTranscript]);
 
+  const answerFromTranscript = useCallback(() => {
+    const fullText = getFullTranscript();
+    const question = pickQuestionFromText(fullText);
+
+    if (!question) {
+      setError('No question found. Say something ending with "?" or type a question.');
+      return;
+    }
+
+    void answerQuestion(question, true);
+  }, [answerQuestion, getFullTranscript]);
+
   const askManually = useCallback(
     (question: string) => {
-      const normalized = question.trim();
-      if (!normalized) {
-        return;
-      }
-
-      seenQuestions.current.add(normalized.toLowerCase());
-      void answerQuestion(normalized);
+      void answerQuestion(question, true);
     },
     [answerQuestion],
   );
@@ -277,18 +303,22 @@ export function useMeetingAssistant() {
     setError(null);
   }, []);
 
+  const fullTranscript = [transcript, interimTranscript].filter(Boolean).join(' ').trim();
+
   return {
     ready,
     settings,
     listening,
     transcript,
     interimTranscript,
+    fullTranscript,
     sessions,
     error,
     settingsOpen,
     setSettingsOpen,
     startListening,
     stopListening,
+    answerFromTranscript,
     askManually,
     persistSettings,
     clearTranscript,

@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -13,8 +12,6 @@ import {
 import { useState } from 'react';
 import { AnswerCard } from './src/components/AnswerCard';
 import { ListenButton } from './src/components/ListenButton';
-import { ListeningTips } from './src/components/ListeningTips';
-import { SafariTips } from './src/components/SafariTips';
 import { SettingsPanel } from './src/components/SettingsPanel';
 import { TranscriptView } from './src/components/TranscriptView';
 import { useMeetingAssistant } from './src/hooks/useMeetingAssistant';
@@ -28,12 +25,14 @@ export default function App() {
     listening,
     transcript,
     interimTranscript,
+    fullTranscript,
     sessions,
     error,
     settingsOpen,
     setSettingsOpen,
     startListening,
     stopListening,
+    answerFromTranscript,
     askManually,
     persistSettings,
     clearTranscript,
@@ -54,27 +53,25 @@ export default function App() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Meeting Assistant</Text>
-          <Text style={styles.subtitle}>
-            Hear a nearby laptop or tablet, detect questions, get LLM answers
-          </Text>
-        </View>
+        <Text style={styles.title}>Meeting Assistant</Text>
         <Pressable onPress={() => setSettingsOpen(true)} style={styles.settingsButton}>
           <Text style={styles.settingsText}>Settings</Text>
         </Pressable>
       </View>
 
-      <ListeningTips />
-      {Platform.OS === 'web' && <SafariTips />}
-
       <ListenButton listening={listening} onStart={startListening} onStop={stopListening} />
+
+      {fullTranscript.length > 0 && (
+        <Pressable onPress={answerFromTranscript} style={styles.getAnswerButton}>
+          <Text style={styles.getAnswerText}>Get answer</Text>
+        </Pressable>
+      )}
 
       {error && <Text style={styles.errorBanner}>{error}</Text>}
 
       <View style={styles.manualRow}>
         <TextInput
-          placeholder="Or type / paste a question manually"
+          placeholder="Type a question"
           placeholderTextColor="#6b7280"
           style={styles.manualInput}
           value={manualQuestion}
@@ -107,8 +104,7 @@ export default function App() {
       <ScrollView style={styles.answersList} contentContainerStyle={styles.answersContent}>
         {sessions.length === 0 ? (
           <Text style={styles.emptyAnswers}>
-            Questions picked up from the other device and LLM answers will show up here. Choose your
-            provider in Settings and add your resume for better interview answers.
+            Answers appear here. After speaking, tap Get answer — or type a question above.
           </Text>
         ) : (
           sessions.map((item) => <AnswerCard key={item.id} item={item} onRetry={askManually} />)
@@ -139,25 +135,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  headerCopy: {
-    flex: 1,
-    paddingRight: 12,
+    marginBottom: 10,
   },
   title: {
     color: '#f9fafb',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-  },
-  subtitle: {
-    color: '#9ca3af',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
   },
   settingsButton: {
     backgroundColor: '#111827',
@@ -169,17 +155,30 @@ const styles = StyleSheet.create({
     color: '#dbeafe',
     fontWeight: '600',
   },
+  getAnswerButton: {
+    alignItems: 'center',
+    backgroundColor: '#16a34a',
+    borderRadius: 14,
+    marginBottom: 10,
+    marginTop: 10,
+    paddingVertical: 16,
+  },
+  getAnswerText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
   errorBanner: {
     backgroundColor: '#451a1a',
     borderRadius: 10,
     color: '#fecaca',
-    marginTop: 12,
+    marginBottom: 8,
     padding: 12,
   },
   manualRow: {
     flexDirection: 'row',
     gap: 8,
-    marginVertical: 12,
+    marginBottom: 8,
   },
   manualInput: {
     backgroundColor: '#111827',
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   askButton: {
     alignItems: 'center',
@@ -207,8 +206,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
-    marginTop: 14,
+    marginBottom: 6,
+    marginTop: 8,
   },
   answersTitle: {
     color: '#e5e7eb',
@@ -223,15 +222,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     borderRadius: 16,
     flex: 1,
-    paddingHorizontal: 4,
+    minHeight: 360,
+    paddingHorizontal: 6,
   },
   answersContent: {
+    flexGrow: 1,
     paddingBottom: 24,
     paddingTop: 8,
   },
   emptyAnswers: {
-    color: '#6b7280',
-    fontSize: 14,
-    lineHeight: 20,
+    color: '#94a3b8',
+    fontSize: 15,
+    lineHeight: 22,
+    padding: 12,
   },
 });

@@ -80,13 +80,14 @@ const styles = StyleSheet.create({
   answerBox: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    padding: 14,
+    minHeight: 120,
+    padding: 16,
   },
   answer: {
     color: '#0f172a',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '500',
-    lineHeight: 30,
+    lineHeight: 34,
   },
   loadingRow: {
     alignItems: 'center',

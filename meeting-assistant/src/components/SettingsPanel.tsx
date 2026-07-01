@@ -50,12 +50,17 @@ function applyProvider(settings: AppSettings, provider: LlmProvider): AppSetting
 export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
   const activeProvider = getProviderConfig(settings.provider);
 
+  const handleDone = () => {
+    void onSave(settings);
+    onClose();
+  };
+
   return (
-    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
+    <Modal animationType="slide" visible={visible} onRequestClose={handleDone}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
-          <Pressable onPress={onClose}>
+          <Pressable onPress={handleDone}>
             <Text style={styles.close}>Done</Text>
           </Pressable>
         </View>

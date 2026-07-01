@@ -10,11 +10,9 @@ export function TranscriptView({ transcript, interimTranscript }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Live transcript</Text>
+      <Text style={styles.heading}>Heard</Text>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.text}>
-          {display || 'Speech from the nearby device will appear here as you listen.'}
-        </Text>
+        <Text style={styles.text}>{display || '…'}</Text>
       </ScrollView>
     </View>
   );
@@ -24,28 +22,28 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#111827',
     borderColor: '#1f2937',
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    flex: 1,
-    minHeight: 140,
-    padding: 14,
+    maxHeight: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   heading: {
-    color: '#9ca3af',
-    fontSize: 13,
+    color: '#6b7280',
+    fontSize: 11,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 4,
     textTransform: 'uppercase',
   },
   scroll: {
-    flex: 1,
+    maxHeight: 40,
   },
   content: {
-    paddingBottom: 8,
+    paddingBottom: 2,
   },
   text: {
-    color: '#e5e7eb',
-    fontSize: 16,
-    lineHeight: 24,
+    color: '#9ca3af',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
