@@ -1,10 +1,20 @@
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SessionItem } from '../types';
 
 type Props = {
   item: SessionItem;
   onRetry?: (question: string) => void;
 };
+
+const webAnswerTextStyle =
+  Platform.OS === 'web'
+    ? ({
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        whiteSpace: 'pre-wrap' as const,
+        wordBreak: 'break-word' as const,
+        width: '100%',
+      } as const)
+    : {};
 
 export function AnswerCard({ item, onRetry }: Props) {
   return (
@@ -21,11 +31,13 @@ export function AnswerCard({ item, onRetry }: Props) {
       )}
 
       {item.status === 'done' && item.answer && (
-        <View style={styles.answerBox}>
-          <Text style={styles.answer} selectable>
-            {item.answer}
-          </Text>
-        </View>
+        <ScrollView
+          style={styles.answerScroll}
+          contentContainerStyle={styles.answerScrollContent}
+          nestedScrollEnabled
+        >
+          <Text style={[styles.answer, webAnswerTextStyle]}>{item.answer}</Text>
+        </ScrollView>
       )}
 
       {item.status === 'error' && (
@@ -50,6 +62,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 14,
     padding: 16,
+    width: '100%',
     ...(Platform.OS === 'web'
       ? {
           boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
@@ -77,17 +90,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
   },
-  answerBox: {
+  answerScroll: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    minHeight: 120,
+    maxHeight: Platform.OS === 'web' ? 480 : 600,
+  },
+  answerScrollContent: {
     padding: 16,
   },
   answer: {
     color: '#0f172a',
-    fontSize: 24,
-    fontWeight: '500',
-    lineHeight: 34,
+    fontSize: 22,
+    fontWeight: '400',
+    lineHeight: 32,
   },
   loadingRow: {
     alignItems: 'center',
@@ -99,7 +114,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#334155',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   errorBox: {

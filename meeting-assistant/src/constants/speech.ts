@@ -4,7 +4,7 @@ import { ExpoSpeechRecognitionOptions } from 'expo-speech-recognition';
 const WEB_LISTENING_OPTIONS: ExpoSpeechRecognitionOptions = {
   lang: 'en-US',
   interimResults: true,
-  continuous: true,
+  continuous: false,
 };
 
 async function getNativeListeningOptions(): Promise<ExpoSpeechRecognitionOptions> {

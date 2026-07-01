@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -104,7 +105,8 @@ export default function App() {
       <ScrollView style={styles.answersList} contentContainerStyle={styles.answersContent}>
         {sessions.length === 0 ? (
           <Text style={styles.emptyAnswers}>
-            Answers appear here. After speaking, tap Get answer — or type a question above.
+            Answers appear here. Speak a question, pause briefly, and an answer will generate
+            automatically.
           </Text>
         ) : (
           sessions.map((item) => <AnswerCard key={item.id} item={item} onRetry={askManually} />)
@@ -224,6 +226,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 360,
     paddingHorizontal: 6,
+    ...(Platform.OS === 'web' ? { maxHeight: '55vh' as unknown as number } : {}),
   },
   answersContent: {
     flexGrow: 1,

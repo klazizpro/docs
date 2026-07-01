@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -6,11 +7,7 @@ import {
 import { getListeningOptions } from '../constants/speech';
 import { askLlm } from '../services/llm';
 import { sendQuestionToIosShortcut } from '../services/iosShortcut';
-import {
-  extractNewQuestions,
-  extractTrailingQuestion,
-  pickQuestionFromText,
-} from '../services/questionDetector';
+import { extractNewQuestions, pickQuestionFromText } from '../services/questionDetector';
 import { loadSettings, saveSettings } from '../services/settings';
 import { AppSettings, DEFAULT_SETTINGS, SessionItem } from '../types';
 
@@ -18,7 +15,7 @@ function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const INTERIM_QUESTION_DELAY_MS = 700;
+const SPEECH_PAUSE_MS = Platform.OS === 'web' ? 1200 : 800;
 
 export function useMeetingAssistant() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -34,8 +31,10 @@ export function useMeetingAssistant() {
   const transcriptRef = useRef('');
   const interimRef = useRef('');
   const settingsRef = useRef(settings);
+  const listeningRef = useRef(false);
   const restartingRef = useRef(false);
-  const interimQuestionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechPauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastInterimSnapshot = useRef('');
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -51,8 +50,8 @@ export function useMeetingAssistant() {
 
   useEffect(() => {
     return () => {
-      if (interimQuestionTimer.current) {
-        clearTimeout(interimQuestionTimer.current);
+      if (speechPauseTimer.current) {
+        clearTimeout(speechPauseTimer.current);
       }
     };
   }, []);
@@ -133,44 +132,56 @@ export function useMeetingAssistant() {
     [updateSession],
   );
 
-  const scheduleInterimQuestionCheck = useCallback(
-    (text: string) => {
+  const tryAutoAnswer = useCallback(
+    (sourceText?: string) => {
       if (!settingsRef.current.autoAnswer) {
         return;
       }
 
-      interimRef.current = text;
-
-      if (interimQuestionTimer.current) {
-        clearTimeout(interimQuestionTimer.current);
+      const fullText = (sourceText ?? getFullTranscript()).trim();
+      const question = pickQuestionFromText(fullText);
+      if (!question) {
+        return;
       }
 
-      interimQuestionTimer.current = setTimeout(() => {
-        const question = extractTrailingQuestion(interimRef.current);
-        if (question) {
-          void answerQuestion(question);
-        }
-      }, INTERIM_QUESTION_DELAY_MS);
+      void answerQuestion(question, true);
     },
-    [answerQuestion],
+    [answerQuestion, getFullTranscript],
   );
 
-  const processFinalTranscript = useCallback(
-    (text: string) => {
-      const merged = `${transcriptRef.current} ${text}`.trim();
-      transcriptRef.current = merged;
-      setTranscript(merged);
-      setInterimTranscript('');
-      interimRef.current = '';
+  const appendTranscript = useCallback((text: string) => {
+    const merged = `${transcriptRef.current} ${text}`.trim();
+    transcriptRef.current = merged;
+    setTranscript(merged);
+    setInterimTranscript('');
+    interimRef.current = '';
+    return merged;
+  }, []);
 
-      if (settingsRef.current.autoAnswer) {
-        const newQuestions = extractNewQuestions(merged, seenQuestions.current);
-        newQuestions.forEach((question) => {
-          void answerQuestion(question, true);
-        });
+  const scheduleAutoAnswerAfterPause = useCallback(
+    (text: string) => {
+      if (!settingsRef.current.autoAnswer || !text.trim()) {
+        return;
       }
+
+      lastInterimSnapshot.current = text;
+      interimRef.current = text;
+      setInterimTranscript(text);
+
+      if (speechPauseTimer.current) {
+        clearTimeout(speechPauseTimer.current);
+      }
+
+      speechPauseTimer.current = setTimeout(() => {
+        if (lastInterimSnapshot.current !== text) {
+          return;
+        }
+
+        const merged = appendTranscript(text);
+        tryAutoAnswer(merged);
+      }, SPEECH_PAUSE_MS);
     },
-    [answerQuestion],
+    [appendTranscript, tryAutoAnswer],
   );
 
   const handleTranscriptUpdate = useCallback(
@@ -180,37 +191,63 @@ export function useMeetingAssistant() {
       }
 
       if (isFinal) {
-        if (interimQuestionTimer.current) {
-          clearTimeout(interimQuestionTimer.current);
+        if (speechPauseTimer.current) {
+          clearTimeout(speechPauseTimer.current);
         }
-        processFinalTranscript(text);
+
+        const merged = appendTranscript(text);
+        if (settingsRef.current.autoAnswer) {
+          const newQuestions = extractNewQuestions(merged, seenQuestions.current);
+          newQuestions.forEach((question) => {
+            void answerQuestion(question, true);
+          });
+
+          if (newQuestions.length === 0) {
+            tryAutoAnswer(merged);
+          }
+        }
       } else {
-        interimRef.current = text;
-        setInterimTranscript(text);
-        scheduleInterimQuestionCheck(text);
+        scheduleAutoAnswerAfterPause(text);
       }
     },
-    [processFinalTranscript, scheduleInterimQuestionCheck],
+    [appendTranscript, answerQuestion, scheduleAutoAnswerAfterPause, tryAutoAnswer],
   );
 
+  const restartListeningIfNeeded = useCallback(() => {
+    if (!listeningRef.current || restartingRef.current) {
+      return;
+    }
+
+    restartingRef.current = true;
+    void getListeningOptions().then((options) => {
+      ExpoSpeechRecognitionModule.start(options);
+    });
+  }, []);
+
   useSpeechRecognitionEvent('start', () => {
+    listeningRef.current = true;
     setListening(true);
     setError(null);
+    restartingRef.current = false;
   });
 
   useSpeechRecognitionEvent('end', () => {
-    setListening(false);
+    if (speechPauseTimer.current) {
+      clearTimeout(speechPauseTimer.current);
+    }
 
     if (interimRef.current.trim()) {
-      processFinalTranscript(interimRef.current);
+      const merged = appendTranscript(interimRef.current);
+      tryAutoAnswer(merged);
     }
 
-    if (restartingRef.current) {
-      restartingRef.current = false;
-      void getListeningOptions().then((options) => {
-        ExpoSpeechRecognitionModule.start(options);
-      });
+    if (listeningRef.current && Platform.OS === 'web') {
+      restartListeningIfNeeded();
+      return;
     }
+
+    listeningRef.current = false;
+    setListening(false);
   });
 
   useSpeechRecognitionEvent('result', (event) => {
@@ -220,10 +257,14 @@ export function useMeetingAssistant() {
 
   useSpeechRecognitionEvent('error', (event) => {
     if (event.error === 'no-speech' || event.error === 'aborted') {
+      if (listeningRef.current && Platform.OS === 'web') {
+        restartListeningIfNeeded();
+      }
       return;
     }
 
     setError(event.message ?? event.error);
+    listeningRef.current = false;
     setListening(false);
   });
 
@@ -244,29 +285,37 @@ export function useMeetingAssistant() {
 
     transcriptRef.current = '';
     interimRef.current = '';
+    lastInterimSnapshot.current = '';
     seenQuestions.current.clear();
     setTranscript('');
     setInterimTranscript('');
     setSessions([]);
 
+    listeningRef.current = true;
     const options = await getListeningOptions();
     ExpoSpeechRecognitionModule.start(options);
   }, []);
 
   const stopListening = useCallback(() => {
+    listeningRef.current = false;
     restartingRef.current = false;
 
-    if (interimQuestionTimer.current) {
-      clearTimeout(interimQuestionTimer.current);
+    if (speechPauseTimer.current) {
+      clearTimeout(speechPauseTimer.current);
     }
 
     if (interimRef.current.trim()) {
-      processFinalTranscript(interimRef.current);
+      appendTranscript(interimRef.current);
     }
 
     ExpoSpeechRecognitionModule.stop();
     setListening(false);
-  }, [processFinalTranscript]);
+
+    const fullText = getFullTranscript();
+    if (fullText) {
+      tryAutoAnswer(fullText);
+    }
+  }, [appendTranscript, getFullTranscript, tryAutoAnswer]);
 
   const answerFromTranscript = useCallback(() => {
     const fullText = getFullTranscript();
@@ -296,6 +345,7 @@ export function useMeetingAssistant() {
   const clearTranscript = useCallback(() => {
     transcriptRef.current = '';
     interimRef.current = '';
+    lastInterimSnapshot.current = '';
     seenQuestions.current.clear();
     setTranscript('');
     setInterimTranscript('');

@@ -7,9 +7,26 @@ export function useWebTheme() {
       return;
     }
 
-    document.documentElement.style.colorScheme = 'dark';
-    document.body.style.backgroundColor = '#030712';
-    document.body.style.color = '#f9fafb';
-    document.body.style.margin = '0';
+    const html = document.documentElement;
+    const body = document.body;
+
+    html.style.colorScheme = 'dark';
+    html.style.height = '100%';
+
+    body.style.backgroundColor = '#030712';
+    body.style.color = '#f9fafb';
+    body.style.margin = '0';
+    body.style.overflow = 'auto';
+    body.style.height = 'auto';
+    body.style.minHeight = '100%';
+    (body.style as CSSStyleDeclaration & { webkitOverflowScrolling?: string }).webkitOverflowScrolling =
+      'touch';
+
+    const root = document.getElementById('root');
+    if (root) {
+      root.style.minHeight = '100vh';
+      root.style.height = 'auto';
+      root.style.overflow = 'visible';
+    }
   }, []);
 }
