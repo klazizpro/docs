@@ -114,7 +114,7 @@ export function SettingsPanel({ visible, settings, onClose, onSave }: Props) {
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder={activeProvider.defaultModel}
+                placeholder="gemini-3.5-flash"
                 placeholderTextColor="#6b7280"
                 style={styles.input}
                 value={settings.model}

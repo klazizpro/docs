@@ -33,10 +33,10 @@ export const LLM_PROVIDERS: ProviderConfig[] = [
     id: 'gemini',
     name: 'Google Gemini',
     description: 'Gemini models via the Google AI API.',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: 'gemini-3.5-flash',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     apiKeyPlaceholder: 'AIza...',
-    modelExamples: ['gemini-2.0-flash', 'gemini-1.5-pro'],
+    modelExamples: ['gemini-3.5-flash', 'gemini-3.1-pro', 'gemini-2.5-flash'],
   },
   {
     id: 'openai-compatible',

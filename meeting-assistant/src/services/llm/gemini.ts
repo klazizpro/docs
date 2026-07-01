@@ -6,20 +6,39 @@ type GeminiResponse = {
   error?: { message?: string; status?: string };
 };
 
+const DEPRECATED_GEMINI_MODELS: Record<string, string> = {
+  'gemini-2.0-flash': 'gemini-3.5-flash',
+  'gemini-2.0-flash-lite': 'gemini-3.5-flash',
+  'gemini-1.5-flash': 'gemini-3.5-flash',
+  'gemini-1.5-pro': 'gemini-3.1-pro',
+};
+
 export function normalizeGeminiModel(model: string): string {
   const trimmed = model.trim();
   const normalized = trimmed.toLowerCase().replace(/\s+/g, '-');
 
-  if (normalized.includes('gemini-2.0-flash') || normalized.includes('flash-2')) {
-    return 'gemini-2.0-flash';
+  if (DEPRECATED_GEMINI_MODELS[trimmed] || DEPRECATED_GEMINI_MODELS[normalized]) {
+    return DEPRECATED_GEMINI_MODELS[trimmed] ?? DEPRECATED_GEMINI_MODELS[normalized]!;
   }
 
-  if (normalized.includes('gemini-1.5-pro')) {
-    return 'gemini-1.5-pro';
+  if (normalized.includes('3.5') && normalized.includes('flash')) {
+    return 'gemini-3.5-flash';
+  }
+
+  if (normalized.includes('3.1') && normalized.includes('pro')) {
+    return 'gemini-3.1-pro';
+  }
+
+  if (normalized.includes('2.5') && normalized.includes('flash')) {
+    return 'gemini-2.5-flash';
   }
 
   if (normalized.includes('flash')) {
-    return 'gemini-2.0-flash';
+    return 'gemini-3.5-flash';
+  }
+
+  if (normalized.includes('pro')) {
+    return 'gemini-3.1-pro';
   }
 
   return trimmed;
@@ -79,7 +98,7 @@ export const askGemini: LlmProviderHandler = async ({ settings, question }) => {
     .trim();
 
   if (!text) {
-    throw new Error('Gemini returned an empty response. Try model name: gemini-2.0-flash');
+    throw new Error('Gemini returned an empty response. Try model: gemini-3.5-flash');
   }
 
   return text;

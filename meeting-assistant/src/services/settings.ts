@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getProviderConfig } from '../constants/providers';
+import { normalizeGeminiModel } from './llm/gemini';
 import { AppSettings, DEFAULT_SETTINGS, LlmProvider } from '../types';
 
 const SETTINGS_KEY = 'meeting-assistant-settings-v2';
@@ -38,11 +39,16 @@ function migrateSettings(parsed: LegacySettings, apiKey: string): AppSettings {
           ? 'api'
           : DEFAULT_SETTINGS.answerMode;
 
+  const model =
+    provider === 'gemini'
+      ? normalizeGeminiModel(parsed.model ?? providerDefaults.defaultModel)
+      : (parsed.model ?? providerDefaults.defaultModel);
+
   return {
     answerMode,
     provider,
     apiKey,
-    model: parsed.model ?? providerDefaults.defaultModel,
+    model,
     baseUrl: parsed.baseUrl ?? providerDefaults.defaultBaseUrl,
     shortcutName: parsed.shortcutName ?? DEFAULT_SETTINGS.shortcutName,
     context: parsed.context ?? '',
