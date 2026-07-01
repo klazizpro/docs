@@ -3,7 +3,6 @@ name: Deploy Meeting Assistant Web
 on:
   push:
     branches:
-      - cursor/meeting-assistant-app-b594
       - master
     paths:
       - 'meeting-assistant/**'

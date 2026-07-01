@@ -33,7 +33,9 @@ If the link above does not load yet:
 1. On any device, open your GitHub repo: `https://github.com/klazizpro/docs`
 2. Go to **Settings → Pages**
 3. Under **Build and deployment**, set **Source** to **GitHub Actions**
-4. Push to the branch triggers deploy automatically (or run the workflow manually under **Actions**)
+4. Go to **Actions** → **Deploy Meeting Assistant Web** → **Run workflow** (must run on the **master** branch)
+
+> **Note:** Deployments only work from the `master` branch due to GitHub environment protection rules. If you see "branch is not allowed to deploy", make sure the workflow runs on `master`, not a feature branch.
 
 ## Safari tips
 
